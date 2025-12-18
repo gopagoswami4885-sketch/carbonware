@@ -19,7 +19,7 @@
     </div>
 
     <div>
-      <a href="/sponsor" class="py-2 px-4 bg-amber-400 hover:bg-amber-500 text-white rounded-none font-semibold">Sponsor us</a>
+      <a href="/sponsor" class="py-2 px-4 bg-amber-400 hover:bg-amber-500 text-white whitespace-nowrap rounded-none font-semibold">Sponsor us</a>
     </div>
   </div>
 </div>

@@ -41,7 +41,7 @@
 <!-- Action Cards -->
 <div class="w-full flex justify-center">
     <div
-        class="w-full max-w-7xl px-4 py-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
+        class="w-full max-w-7xl px-4 py-12 flex flex-col items-center md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
     >
         <Card
             url="search"
@@ -78,7 +78,7 @@
 
 <!-- Featured Books -->
 <div class="w-full flex justify-center py-16">
-    <div class="w-full max-w-7xl px-4 flex gap-4 md:gap-6 flex-wrap justify-center">
+    <div class="w-full max-w-7xl px-4 grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
         {#if featuredBooks.length === 0}
             <p class="text-gray-500 text-center w-full">
                 No books listed yet 📚

@@ -111,7 +111,7 @@
     </div>
 
     <!-- Books -->
-    <div class="w-full max-w-7xl flex gap-4 flex-wrap">
+    <div class="w-full max-w-7xl grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 px-2">
         {#if filteredBooks.length === 0}
             <p class="w-full text-center text-gray-500">No books found 📚</p>
         {:else}
