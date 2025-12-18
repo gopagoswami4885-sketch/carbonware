@@ -1,6 +1,5 @@
 <script lang="ts">
     import "./layout.css";
-    import Navbar from "../components/Navbar.svelte";
     import Card from "../components/Card.svelte";
     import Book from "../components/Book.svelte";
     import { getAllBooks } from "../lib/db";
@@ -27,15 +26,10 @@
     });
 </script>
 
-<!-- Navbar -->
-<div class="w-full flex justify-center">
-    <Navbar />
-</div>
-
 <!-- Action Cards -->
 <div class="w-full flex justify-center">
     <div
-        class="w-full max-w-[1280px] py-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
+        class="w-full max-w-7xl px-4 py-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
     >
         <Card
             url="search"
@@ -65,14 +59,14 @@
 </div>
 
 <!-- Shelf Header -->
-<div class="w-full py-6 bg-amber-400 text-center">
-    <p class="text-4xl subtitle">Open Shelf Store</p>
+<div class="w-full py-6 bg-amber-400 text-center px-4">
+    <p class="text-2xl sm:text-4xl subtitle">Open Shelf Store</p>
     <p class="text-sm text-amber-900 mt-1">Recently added by the community</p>
 </div>
 
 <!-- Featured Books -->
 <div class="w-full flex justify-center py-16">
-    <div class="w-full max-w-[1280px] flex gap-6 flex-wrap justify-center">
+    <div class="w-full max-w-7xl px-4 flex gap-4 md:gap-6 flex-wrap justify-center">
         {#if featuredBooks.length === 0}
             <p class="text-gray-500 text-center w-full">
                 No books listed yet 📚
@@ -80,6 +74,7 @@
         {:else}
             {#each featuredBooks as book (book.id)}
                 <Book
+                    id={book.id}
                     image={book.image}
                     bookName={book.bookName}
                     bookTitle={book.bookTitle}

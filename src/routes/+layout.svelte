@@ -2,6 +2,7 @@
     import "./layout.css";
     import favicon from "$lib/assets/favicon.svg";
     import { Toaster } from "svelte-french-toast";
+    import Navbar from "../components/Navbar.svelte";
     let { children } = $props();
 </script>
 
@@ -12,4 +13,8 @@
     }}
 />
 <svelte:head><link rel="icon" href={favicon} /></svelte:head>
-{@render children()}
+
+<!-- Global navbar (rendered on every page) -->
+<Navbar />
+
+{@render children()} 

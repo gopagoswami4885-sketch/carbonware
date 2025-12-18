@@ -1,5 +1,4 @@
 <script lang="ts">
-    import Navbar from "../../components/Navbar.svelte";
     import Book from "../../components/Book.svelte";
     import { getAllBooks } from "../../lib/db";
     import type { BookListing } from "../../lib/db";
@@ -65,10 +64,6 @@
     });
 </script>
 
-<div class="w-full flex justify-center">
-    <Navbar />
-</div>
-
 <div class="py-4 flex flex-col items-center gap-8 w-full">
     <!-- Header -->
     <div class="w-full py-6 bg-amber-400 text-center">
@@ -77,13 +72,13 @@
 
     <!-- Filters -->
     <div
-        class="w-full max-w-[1280px] flex flex-wrap gap-4 items-center justify-between px-2"
+        class="w-full max-w-7xl flex flex-wrap gap-4 items-center justify-between px-2"
     >
         <!-- Search -->
         <input
             type="text"
             placeholder="Search by name or title…"
-            class="px-4 py-2 border rounded-lg w-full sm:w-[260px]"
+            class="px-4 py-2 border rounded-none w-full sm:w-65"
             value={searchQuery}
             oninput={(e) => (searchQuery = e.currentTarget.value)}
         />
@@ -91,7 +86,7 @@
         <div class="flex gap-3">
             <!-- Genre -->
             <select
-                class="px-4 py-2 border rounded-lg"
+                class="px-4 py-2 border rounded-none"
                 value={selectedGenre}
                 onchange={(e) => (selectedGenre = e.currentTarget.value)}
             >
@@ -102,7 +97,7 @@
 
             <!-- Sort -->
             <select
-                class="px-4 py-2 border rounded-lg"
+                class="px-4 py-2 border rounded-none"
                 value={sortOrder}
                 onchange={(e) =>
                     (sortOrder = e.currentTarget.value as typeof sortOrder)}
@@ -115,12 +110,13 @@
     </div>
 
     <!-- Books -->
-    <div class="w-full max-w-[1280px] flex gap-4 flex-wrap">
+    <div class="w-full max-w-7xl flex gap-4 flex-wrap">
         {#if filteredBooks.length === 0}
             <p class="w-full text-center text-gray-500">No books found 📚</p>
         {:else}
             {#each filteredBooks as book (book.id)}
                 <Book
+                    id={book.id}
                     image={book.image}
                     bookName={book.bookName}
                     bookTitle={book.bookTitle}

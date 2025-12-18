@@ -1,7 +1,8 @@
 <script lang="ts">
-    import Navbar from "../../components/Navbar.svelte";
     import toast from "svelte-french-toast";
     import { ImagePlus, Mail, X, Plus } from "@lucide/svelte";
+    import { isValidEmail } from "../../lib/validators";
+import { buildMailto } from "../../lib/mail";
 
     /* ===================== UTIL ===================== */
     function clone<T>(v: T): T {
@@ -9,7 +10,7 @@
     }
 
     /* ===================== TYPES ===================== */
-    export type ExchangeListing = {
+    type ExchangeListing = {
         id: string;
         image: string | null;
         bookName: string;
@@ -42,9 +43,14 @@
 
     async function addExchange(exchange: ExchangeListing) {
         const db = await openDB();
-        const tx = db.transaction(STORE_NAME, "readwrite");
-        tx.objectStore(STORE_NAME).add(clone(exchange));
-        return tx.complete;
+        return new Promise<void>((resolve, reject) => {
+            const tx = db.transaction(STORE_NAME, "readwrite");
+            const store = tx.objectStore(STORE_NAME);
+            const req = store.add(clone(exchange));
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error);
+            req.onerror = () => reject(req.error);
+        });
     }
 
     async function getAllExchanges(): Promise<ExchangeListing[]> {
@@ -71,7 +77,7 @@
     let address = $state("");
     let email = $state("");
 
-    let fileInput: HTMLInputElement;
+    let fileInput = $state<HTMLInputElement | null>(null);
 
     const genres = [
         "Fiction",
@@ -102,6 +108,11 @@
             return;
         }
 
+        if (!isValidEmail(email)) {
+            toast.error("Please provide a valid email address");
+            return;
+        }
+
         const exchange: ExchangeListing = {
             id: crypto.randomUUID(),
             image: imagePreview,
@@ -114,6 +125,8 @@
         };
 
         await addExchange(exchange);
+        // Refresh the list immediately so users see their new exchange without a full refresh
+        await loadExchanges();
 
         imagePreview = null;
         bookName = "";
@@ -136,7 +149,7 @@
         listings = await getAllExchanges();
     }
 
-    $effect(loadExchanges);
+    $effect(() => { if (activeTab === "view") loadExchanges(); });
 
     function openModal(exchange: ExchangeListing) {
         selectedExchange = clone(exchange);
@@ -146,20 +159,16 @@
     function initiateExchange() {
         if (!selectedExchange) return;
 
-        const subject = encodeURIComponent(
-            `Book Exchange Request: ${selectedExchange.bookName}`,
-        );
+        const subject = `Book Exchange Request: ${selectedExchange.bookName}`;
 
-        const body = encodeURIComponent(
-            `Hello,\n\n` +
-                `I am interested in exchanging books.\n\n` +
-                `Book: ${selectedExchange.bookName}\n` +
-                `Genre: ${selectedExchange.genre}\n` +
-                `Location: ${selectedExchange.exchangeAddress || "To be discussed"}\n\n` +
-                `Please let me know if you're interested.\n`,
-        );
+        const body = `Hello,\n\n` +
+            `I am interested in exchanging books.\n\n` +
+            `Book: ${selectedExchange.bookName}\n` +
+            `Genre: ${selectedExchange.genre}\n` +
+            `Location: ${selectedExchange.exchangeAddress || "To be discussed"}\n\n` +
+            `Please let me know if you're interested.\n`;
 
-        window.location.href = `mailto:${selectedExchange.exchangeEmail}?subject=${subject}&body=${body}`;
+        window.location.href = buildMailto({ to: selectedExchange.exchangeEmail, subject, body });
 
         showModal = false;
         toast.success("Email opened in your mail app 📧");
@@ -169,11 +178,12 @@
 <!-- ===================== SNIPPET ===================== -->
 {#snippet ExchangeCard(exchange: ExchangeListing)}
     <div
-        class="w-[280px] bg-white rounded-2xl shadow hover:shadow-lg transition cursor-pointer overflow-hidden"
+        class="w-70 bg-white rounded-none border border-gray-200 hover:border-gray-300 transition cursor-pointer overflow-hidden"
     >
         {#if exchange.image}
             <img
                 src={exchange.image}
+                alt={exchange.bookName}
                 class="w-full aspect-square object-cover"
             />
         {/if}
@@ -182,7 +192,7 @@
             <p class="text-lg font-semibold">{exchange.bookName}</p>
             <p class="text-sm text-gray-500">{exchange.bookTitle}</p>
             <span
-                class="mt-2 inline-block text-xs px-3 py-1 rounded-full bg-amber-100 text-amber-800 w-fit"
+                class="mt-2 inline-block text-xs px-3 py-1 rounded-none bg-amber-100 text-amber-800 w-fit"
             >
                 {exchange.genre}
             </span>
@@ -190,11 +200,8 @@
     </div>
 {/snippet}
 
-<div class="w-full flex justify-center">
-    <Navbar />
-</div>
 
-<div class="w-full max-w-[1280px] mx-auto py-10">
+<div class="w-full max-w-7xl mx-auto py-10">
     <!-- Tabs -->
     <div class="flex justify-center gap-4 mb-10">
         <button
@@ -215,25 +222,27 @@
 
     <!-- CREATE -->
     {#if activeTab === "create"}
-        <section class="max-w-2xl mx-auto bg-white rounded-3xl shadow-lg p-8">
+        <section class="max-w-2xl mx-auto bg-white rounded-none border border-gray-200 p-8">
             <h2 class="text-2xl font-semibold text-center mb-6">
                 Put a Book Up for Exchange 🔄
             </h2>
 
             <div class="flex justify-center mb-6">
-                <div
-                    class="w-44 aspect-square rounded-2xl border bg-gray-50 cursor-pointer flex items-center justify-center overflow-hidden"
-                    onclick={() => fileInput.click()}
+                <button
+                    type="button"
+                    class="w-44 aspect-square rounded-none border bg-gray-50 cursor-pointer flex items-center justify-center overflow-hidden"
+                    onclick={() => fileInput?.click()}
                 >
                     {#if imagePreview}
                         <img
                             src={imagePreview}
+                            alt="preview"
                             class="w-full h-full object-cover"
                         />
                     {:else}
                         <ImagePlus size={36} class="text-gray-400" />
                     {/if}
-                </div>
+                </button>
 
                 <input
                     bind:this={fileInput}
@@ -289,7 +298,7 @@
                 />
 
                 <button
-                    class="mt-4 py-3 rounded-xl bg-amber-400 hover:bg-amber-500 font-semibold"
+                    class="mt-4 py-3 rounded-none bg-amber-400 hover:bg-amber-500 font-semibold"
                     onclick={createExchange}
                 >
                     Create Exchange Listing
@@ -302,9 +311,9 @@
     {#if activeTab === "view"}
         <section class="flex gap-4 flex-wrap justify-center">
             {#each listings as exchange (exchange.id)}
-                <div onclick={() => openModal(exchange)}>
+                <button type="button" class="p-0" onclick={() => openModal(exchange)} aria-label={`Open ${exchange.bookName}`}>
                     {@render ExchangeCard(exchange)}
-                </div>
+                </button>
             {/each}
 
             {#if listings.length === 0}
@@ -320,7 +329,7 @@
         <div
             class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
         >
-            <div class="bg-white rounded-2xl p-6 w-full max-w-md relative">
+            <div class="bg-white rounded-none p-6 w-full max-w-md relative">
                 <button
                     class="absolute top-4 right-4"
                     onclick={() => (showModal = false)}
@@ -338,7 +347,7 @@
                 </p>
 
                 <button
-                    class="mt-6 w-full py-3 rounded-xl bg-green-500 text-white font-semibold flex items-center justify-center gap-2"
+                    class="mt-6 w-full py-3 rounded-none bg-green-500 text-white font-semibold flex items-center justify-center gap-2"
                     onclick={initiateExchange}
                 >
                     <Mail size={18} />
@@ -352,19 +361,21 @@
 <style>
     .input {
         padding: 0.75rem 1rem;
-        border-radius: 0.75rem;
-        border: 1px solid #e5e7eb;
+        border-radius: 0;
+        border: 1px solid #f3f4f6;
+        background: #ffffff;
+        transition: box-shadow 160ms ease, border-color 160ms ease, transform 160ms ease;
     }
 
     .input:focus {
         outline: none;
         border-color: #f59e0b;
-        box-shadow: 0 0 0 2px #fde68a;
+        box-shadow: 0 0 0 6px rgba(245,158,11,0.06);
     }
 
     .tab {
         padding: 0.75rem 1.5rem;
-        border-radius: 999px;
+        border-radius: 0;
         background: #f3f4f6;
         font-weight: 600;
     }

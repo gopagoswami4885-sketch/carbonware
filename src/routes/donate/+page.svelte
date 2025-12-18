@@ -1,7 +1,8 @@
 <script lang="ts">
-    import Navbar from "../../components/Navbar.svelte";
     import toast from "svelte-french-toast";
     import { Plus, Trash2, Gift, Mail, X } from "@lucide/svelte";
+    import { isValidEmail } from "../../lib/validators";
+import { buildMailto } from "../../lib/mail";
 
     /* ===================== UTIL ===================== */
 
@@ -43,9 +44,14 @@
 
     async function addDonation(donation: DonationListing) {
         const db = await openDB();
-        const tx = db.transaction(STORE, "readwrite");
-        tx.objectStore(STORE).add(clone(donation));
-        return tx.complete;
+        return new Promise<void>((resolve, reject) => {
+            const tx = db.transaction(STORE, "readwrite");
+            const store = tx.objectStore(STORE);
+            const req = store.add(clone(donation));
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error);
+            req.onerror = () => reject(req.error);
+        });
     }
 
     async function getDonations(): Promise<DonationListing[]> {
@@ -81,8 +87,19 @@
     }
 
     async function submitDonation() {
+        // If user entered a single requested book and never clicked '+', accept it if it's not blank
+        if (requestedBooks.length === 0 && bookInput.trim()) {
+            requestedBooks = [...requestedBooks, bookInput.trim()];
+            bookInput = "";
+        }
+
         if (!donorName || !email || requestedBooks.length === 0) {
             toast.error("Please complete required fields");
+            return;
+        }
+
+        if (!isValidEmail(email)) {
+            toast.error("Please provide a valid email address");
             return;
         }
 
@@ -96,6 +113,8 @@
         };
 
         await addDonation(donation);
+        // Refresh donations immediately so the new entry appears in the UI
+        await loadDonations();
 
         donorName = "";
         email = "";
@@ -115,9 +134,7 @@
         donations = clone(await getDonations());
     }
 
-    $effect(() => {
-        loadDonations();
-    });
+    $effect(() => { if (activeTab === "honour") loadDonations(); });
 
     function openModal(donation: DonationListing) {
         selectedDonation = clone(donation);
@@ -127,32 +144,24 @@
     function honourDonation() {
         if (!selectedDonation) return;
 
-        const subject = encodeURIComponent(
-            "Honouring your book donation request",
-        );
+        const subject = "Honouring your book donation request";
 
-        const body = encodeURIComponent(
-            `Hello ${selectedDonation.donorName},\n\n` +
-                `I would like to honour your donation request.\n\n` +
-                `Requested books:\n` +
-                selectedDonation.requestedBooks
-                    .map((b) => `• ${b}`)
-                    .join("\n") +
-                `\n\nPlease let me know how to proceed.\n`,
-        );
+        const body = `Hello ${selectedDonation.donorName},\n\n` +
+            `I would like to honour your donation request.\n\n` +
+            `Requested books:\n` +
+            selectedDonation.requestedBooks
+                .map((b) => `• ${b}`)
+                .join("\n") +
+            `\n\nPlease let me know how to proceed.\n`;
 
-        window.location.href = `mailto:${selectedDonation.email}?subject=${subject}&body=${body}`;
+        window.location.href = buildMailto({ to: selectedDonation.email, subject, body });
 
         showModal = false;
         toast.success("Email opened in mail client 📧");
     }
 </script>
 
-<div class="w-full flex justify-center">
-    <Navbar />
-</div>
-
-<div class="w-full max-w-[1280px] mx-auto py-10">
+<div class="w-full max-w-7xl mx-auto py-10">
     <!-- Tabs -->
     <div class="flex justify-center gap-4 mb-10">
         <button
@@ -173,7 +182,7 @@
 
     <!-- CREATE TAB -->
     {#if activeTab === "create"}
-        <section class="max-w-2xl mx-auto bg-white p-8 rounded-3xl shadow-lg">
+        <section class="max-w-2xl mx-auto bg-white p-8 rounded-none border border-gray-200">
             <h2 class="text-2xl font-semibold text-center mb-6">
                 Request Books for Donation 🎁
             </h2>
@@ -212,7 +221,7 @@
                     <ul class="space-y-2">
                         {#each requestedBooks as book, i}
                             <li
-                                class="flex justify-between items-center bg-gray-100 px-4 py-2 rounded-xl"
+                                class="flex justify-between items-center bg-gray-100 px-4 py-2 rounded-none"
                             >
                                 {book}
                                 <button onclick={() => removeBook(i)}>
@@ -224,7 +233,7 @@
                 {/if}
 
                 <button
-                    class="mt-6 py-3 rounded-xl bg-amber-400 hover:bg-amber-500 font-semibold"
+                    class="mt-6 py-3 rounded-none bg-amber-400 hover:bg-amber-500 font-semibold"
                     onclick={submitDonation}
                 >
                     Submit Donation Request
@@ -238,16 +247,14 @@
         <section>
             <div class="flex flex-wrap gap-12 justify-center">
                 {#each donations as donation (donation.id)}
-                    <div
-                        class="w-72 bg-zinc-100 p-5 rounded-2xl shadow cursor-pointer hover:shadow-lg"
-                        onclick={() => openModal(donation)}
-                    >
+                    <button type="button" class="w-72 bg-zinc-100 p-5 rounded-none border border-gray-200 cursor-pointer hover:border-gray-300 text-left" onclick={() => openModal(donation)} aria-label={`Open ${donation.donorName}`}>
+                    
                         <Gift class="text-amber-500 mb-3" />
                         <h3 class="font-semibold">{donation.donorName}</h3>
                         <p class="text-sm text-gray-500">
                             Needs {donation.requestedBooks.length} book(s)
                         </p>
-                    </div>
+                    </button>
                 {/each}
             </div>
 
@@ -264,7 +271,7 @@
         <div
             class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
         >
-            <div class="bg-white w-full max-w-md rounded-2xl p-6 relative">
+            <div class="bg-white w-full max-w-md rounded-none p-6 relative">
                 <button
                     class="absolute top-4 right-4"
                     onclick={() => (showModal = false)}
@@ -282,7 +289,7 @@
                 </ul>
 
                 <button
-                    class="w-full py-3 bg-green-500 text-white rounded-xl font-semibold flex items-center justify-center gap-2"
+                    class="w-full py-3 bg-green-500 text-white rounded-none font-semibold flex items-center justify-center gap-2"
                     onclick={honourDonation}
                 >
                     <Mail size={18} />
@@ -296,19 +303,21 @@
 <style>
     .input {
         padding: 0.75rem 1rem;
-        border-radius: 0.75rem;
-        border: 1px solid #e5e7eb;
+        border-radius: 0;
+        border: 1px solid #f3f4f6;
+        background: #ffffff;
+        transition: box-shadow 160ms ease, border-color 160ms ease, transform 160ms ease;
     }
 
     .input:focus {
         outline: none;
         border-color: #f59e0b;
-        box-shadow: 0 0 0 2px #fde68a;
+        box-shadow: 0 0 0 6px rgba(245,158,11,0.06);
     }
 
     .tab {
         padding: 0.75rem 1.5rem;
-        border-radius: 999px;
+        border-radius: 0;
         background: #f3f4f6;
         font-weight: 600;
     }
@@ -319,7 +328,7 @@
 
     .icon-btn {
         padding: 0.75rem;
-        border-radius: 0.75rem;
+        border-radius: 0;
         background: #f3f4f6;
     }
 </style>

@@ -4,7 +4,7 @@
 
 <a
     href={url}
-    class="aspect-3/4 w-[300px] overflow-hidden hover:p-2 cursor-pointer transition-all"
+    class="aspect-3/4 w-full sm:w-75 max-w-75 overflow-hidden cursor-pointer transition-transform duration-200 ease-in-out hover:scale-105 border border-gray-100"
 >
     <div
         class="w-full h-full relative overflow-hidden flex flex-col-reverse bg-center bg-cover"

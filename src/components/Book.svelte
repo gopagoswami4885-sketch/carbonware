@@ -1,6 +1,7 @@
 <script lang="ts">
-    const { image, bookName, bookTitle, genre, originalPrice, listingPrice } =
+    const { id, image, bookName, bookTitle, genre, originalPrice, listingPrice } =
         $props<{
+            id: string;
             image: string | null;
             bookName: string;
             bookTitle: string;
@@ -10,9 +11,10 @@
         }>();
 </script>
 
-<div
-    class="w-[260px] bg-white rounded-2xl shadow-md hover:shadow-xl transition overflow-hidden"
->
+<a href={`/buy/${id}`} aria-label={`Buy ${bookName}`} class="block">
+    <div
+        class="w-full sm:w-65 bg-white rounded-none border border-gray-100 hover:border-gray-300 transition-transform duration-200 ease-in-out hover:scale-105 overflow-hidden"
+    >
     <div class="aspect-square bg-gray-100">
         <img
             src={image ?? "https://picsum.photos/600/600"}
@@ -32,7 +34,7 @@
         </p>
 
         <span
-            class="self-start text-xs px-2 py-1 rounded-full bg-amber-100 text-amber-700"
+            class="self-start text-xs px-2 py-1 rounded-none bg-amber-100 text-amber-700"
         >
             {genre}
         </span>
@@ -48,4 +50,5 @@
             </span>
         </div>
     </div>
-</div>
+    </div>
+</a>

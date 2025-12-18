@@ -10,6 +10,7 @@ export type BookListing = {
   genre: string;
   originalPrice?: string;
   listingPrice: string;
+  email?: string; // contact email of lister
   createdAt: string;
 };
 
@@ -29,10 +30,40 @@ function openDB(): Promise<IDBDatabase> {
   });
 }
 
-export async function addBook(book: BookListing) {
+export async function addBook(book: BookListing): Promise<void> {
   const db = await openDB();
   const tx = db.transaction(STORE_NAME, "readwrite");
-  tx.objectStore(STORE_NAME).add(book);
+  const store = tx.objectStore(STORE_NAME);
+
+  return new Promise((resolve, reject) => {
+    const req = store.add(book);
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+  });
+}
+
+export async function updateBook(book: BookListing): Promise<void> {
+  const db = await openDB();
+  const tx = db.transaction(STORE_NAME, "readwrite");
+  const store = tx.objectStore(STORE_NAME);
+
+  return new Promise((resolve, reject) => {
+    const req = store.put(book);
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+  });
+}
+
+export async function deleteBook(id: string): Promise<void> {
+  const db = await openDB();
+  const tx = db.transaction(STORE_NAME, "readwrite");
+  const store = tx.objectStore(STORE_NAME);
+
+  return new Promise((resolve, reject) => {
+    const req = store.delete(id);
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+  });
 }
 
 export async function getAllBooks(): Promise<BookListing[]> {
@@ -43,5 +74,16 @@ export async function getAllBooks(): Promise<BookListing[]> {
   return new Promise((resolve) => {
     const req = store.getAll();
     req.onsuccess = () => resolve(req.result);
+  });
+}
+
+export async function getBookById(id: string): Promise<BookListing | null> {
+  const db = await openDB();
+  const tx = db.transaction(STORE_NAME, "readonly");
+  const store = tx.objectStore(STORE_NAME);
+
+  return new Promise((resolve) => {
+    const req = store.get(id);
+    req.onsuccess = () => resolve(req.result ?? null);
   });
 }

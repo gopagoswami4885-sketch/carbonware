@@ -1,8 +1,9 @@
 <script lang="ts">
-    import Navbar from "../../components/Navbar.svelte";
     import { addBook } from "../../lib/db";
     import type { BookListing } from "../../lib/db";
     import { ImagePlus } from "@lucide/svelte";
+    import toast from "svelte-french-toast";
+    import { isValidEmail, isValidPrice, priceNotExceed } from "../../lib/validators";
 
     let imagePreview = $state<string | null>(null);
     let bookName = $state("");
@@ -10,8 +11,36 @@
     let genre = $state("");
     let originalPrice = $state("");
     let listingPrice = $state("");
+    let contactEmail = $state("");
+    let priceError = $state("");
+    let contactEmailError = $state("");
 
-    let fileInput: HTMLInputElement;
+    let fileInput = $state<HTMLInputElement | null>(null);
+
+    function validatePrices() {
+        // clear previous error
+        priceError = "";
+
+        // only validate when listing price is provided
+        if (listingPrice !== "") {
+            if (!isValidPrice(listingPrice)) {
+                priceError = "Please enter a valid listing price.";
+                return;
+            }
+
+            if (originalPrice !== "") {
+                if (!isValidPrice(originalPrice)) {
+                    priceError = "Please enter a valid original price to compare against.";
+                    return;
+                }
+
+                if (!priceNotExceed(originalPrice, listingPrice)) {
+                    priceError = "Listing price must not exceed the original price.";
+                    return;
+                }
+            }
+        }
+    }
 
     const genres = [
         "Fiction",
@@ -37,8 +66,21 @@
     }
 
     async function saveBook() {
-        if (!bookName || !bookTitle || !genre || !listingPrice) {
-            alert("Please fill all required fields");
+        // run validation first
+        validatePrices();
+
+        if (!bookName || !bookTitle || !genre || !listingPrice || !contactEmail) {
+            toast.error("Please fill all required fields");
+            return;
+        }
+
+        if (contactEmailError) {
+            toast.error(contactEmailError);
+            return;
+        }
+
+        if (priceError) {
+            toast.error(priceError);
             return;
         }
 
@@ -50,25 +92,33 @@
             genre,
             originalPrice,
             listingPrice,
+            email: contactEmail,
             createdAt: new Date().toISOString(),
         };
 
-        await addBook(book);
+        try {
+            await addBook(book);
 
-        imagePreview = null;
-        bookName = "";
-        bookTitle = "";
-        genre = "";
-        originalPrice = "";
-        listingPrice = "";
+            imagePreview = null;
+            bookName = "";
+            bookTitle = "";
+            genre = "";
+            originalPrice = "";
+            listingPrice = "";
+            contactEmail = "";
+            priceError = "";
 
-        alert("Book listed successfully!");
+            toast.success("Book listed successfully!");
+        } catch (err) {
+            console.error('Failed to save book', err);
+            toast.error('Failed to save listing. Please try again.');
+        }
     }
 </script>
 
 <div class="w-full flex justify-center py-10">
     <form
-        class="w-full max-w-2xl bg-white p-8 rounded-3xl shadow-lg flex flex-col gap-6"
+        class="w-full max-w-2xl bg-white p-8 rounded-none border border-gray-200 flex flex-col gap-6"
         onsubmit={(e) => {
             e.preventDefault();
             saveBook();
@@ -78,9 +128,10 @@
 
         <!-- Image uploader -->
         <div class="flex justify-center">
-            <div
-                class="relative w-44 aspect-square rounded-2xl overflow-hidden border bg-gray-50 cursor-pointer group"
-                onclick={() => fileInput.click()}
+            <button
+                type="button"
+                class="relative w-44 aspect-square rounded-none overflow-hidden border bg-gray-50 cursor-pointer group"
+                onclick={() => fileInput?.click()}
             >
                 {#if imagePreview}
                     <img
@@ -103,7 +154,7 @@
                 >
                     <ImagePlus size={32} class="text-white" />
                 </div>
-            </div>
+            </button>
 
             <input
                 bind:this={fileInput}
@@ -140,13 +191,30 @@
             {/each}
         </select>
 
-        <div class="grid grid-cols-2 gap-4">
+        <!-- Contact email above pricing -->
+        <input
+            type="email"
+            placeholder="Contact Email *"
+            class="input"
+            required
+            value={contactEmail}
+                aria-invalid={contactEmailError ? "true" : "false"}
+                oninput={(e) => {
+                    contactEmail = e.currentTarget.value;
+                    contactEmailError = isValidEmail(contactEmail) ? "" : "Please enter a valid email address.";
+                }}
+            />
+
+            {#if contactEmailError}
+                <p class="text-red-600 text-sm mt-1">{contactEmailError}</p>
+            {/if}
+
             <input
                 type="number"
-                placeholder="Original Price (₹)"
+                placeholder="Original Price (₹) (optional)"
                 class="input"
                 value={originalPrice}
-                oninput={(e) => (originalPrice = e.currentTarget.value)}
+                oninput={(e) => { originalPrice = e.currentTarget.value; validatePrices(); }}
             />
 
             <input
@@ -155,13 +223,17 @@
                 class="input"
                 required
                 value={listingPrice}
-                oninput={(e) => (listingPrice = e.currentTarget.value)}
+                aria-invalid={priceError ? "true" : "false"}
+                oninput={(e) => { listingPrice = e.currentTarget.value; validatePrices(); }}
             />
-        </div>
+
+        {#if priceError}
+            <p class="text-red-600 text-sm mt-1">{priceError}</p>
+        {/if}
 
         <button
             type="submit"
-            class="mt-4 py-3 rounded-xl bg-amber-400 hover:bg-amber-500 font-semibold transition"
+            class="mt-4 py-3 rounded-none bg-amber-400 hover:bg-amber-500 font-semibold transition"
         >
             Save Listing
         </button>
@@ -171,13 +243,15 @@
 <style>
     .input {
         padding: 0.75rem 1rem;
-        border-radius: 0.75rem;
-        border: 1px solid #e5e7eb;
-        outline: none;
+        border-radius: 0;
+        border: 1px solid #f3f4f6; /* softer */
+        background: #ffffff;
+        transition: box-shadow 160ms ease, border-color 160ms ease, transform 160ms ease;
     }
 
     .input:focus {
+        outline: none;
         border-color: #f59e0b;
-        box-shadow: 0 0 0 2px #fde68a;
+        box-shadow: 0 0 0 6px rgba(245,158,11,0.06); /* subtle amber ring */
     }
 </style>
