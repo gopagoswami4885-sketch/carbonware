@@ -1,10 +1,12 @@
 <script lang="ts">
+
     import "./layout.css";
     import favicon from "$lib/assets/favicon.svg";
     import { Toaster } from "svelte-french-toast";
     import Navbar from "../components/Navbar.svelte";
     import { onMount } from "svelte";
     import { afterNavigate } from "$app/navigation";
+
     let { children } = $props();
 
     function maybeScrollToHash() {
@@ -35,7 +37,9 @@
         duration: 3000,
     }}
 />
-<svelte:head><link rel="icon" href={favicon} /></svelte:head>
+<svelte:head><link rel="icon" href="/logo.ico" />
+<title>OpenShelf - Read, Return, Repeat</title>
+</svelte:head>
 
 <!-- Global navbar (rendered on every page) -->
 <Navbar />
