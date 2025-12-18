@@ -1,38 +1,47 @@
-# sv
+# Carbonware — OpenShelf
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+**Hackathon project**: A lightweight, community-first book listing platform for college students to share, list, donate and exchange books — reducing book waste and making textbooks accessible.
 
-## Creating a project
+## Team
+- **Mayukh Chakraborty** (Leader)
+- **Biswajit Ray** (Member)
+- **Saptarshi Ray** (Member)
 
-If you're seeing this, you've probably already done this step. Congrats!
+## What it does
+OpenShelf lets students:
+- List books for sale with price and contact info
+- Browse and search listings by title, author, genre and price
+- Exchange books with other students
+- Request donations and offer books for donation
+- Contact listers via a simple mail flow
+
+The app is built with SvelteKit and uses IndexedDB (client-side) for storage and offline support. For the hackathon MVP we keep data in the browser.
+
+## Quickstart (required)
+To run the project locally:
+
+1. Install dependencies (the project currently uses a few dev-time peer deps — use force to ensure a clean install):
 
 ```sh
-# create a new project in the current directory
-npx sv create
-
-# create a new project in my-app
-npx sv create my-app
+npm install --force
 ```
 
-## Developing
-
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+2. Start the dev server:
 
 ```sh
 npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
 ```
 
-## Building
+3. Open `http://localhost:5173` (Vite default) in your browser.
 
-To create a production version of your app:
+> On first run the app will seed the local IndexedDB with 5 sample books (only if your IndexedDB store is empty) so you can explore the UI immediately.
 
-```sh
-npm run build
-```
+## Development notes
+- UI: SvelteKit + Tailwind-like utility classes (project uses utility tokens). See `src/routes` and `src/components` for pages and components.
+- Data: IndexedDB helpers live in `src/lib/db.ts`. Validation helpers are in `src/lib/validators.ts`.
+- Mail helper: `src/lib/mail.ts` centralizes mailto creation.
+- Global layout & styles: `src/routes/+layout.svelte` and `src/routes/layout.css`.
 
-You can preview the production build with `npm run preview`.
+---
 
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+Thanks for checking out Carbonware — enjoy exploring the app!

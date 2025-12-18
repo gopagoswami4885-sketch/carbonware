@@ -2,13 +2,14 @@
     import "./layout.css";
     import Card from "../components/Card.svelte";
     import Book from "../components/Book.svelte";
-    import { getAllBooks } from "../lib/db";
+    import { getAllBooks, ensureSeedBooks } from "../lib/db";
     import type { BookListing } from "../lib/db";
 
     let books = $state<BookListing[]>([]);
     let featuredBooks = $state<BookListing[]>([]);
 
     async function loadBooks() {
+        await ensureSeedBooks();
         books = await getAllBooks();
 
         // show latest 8 books on home

@@ -1,6 +1,6 @@
 <script lang="ts">
     import Book from "../../components/Book.svelte";
-    import { getAllBooks } from "../../lib/db";
+    import { getAllBooks, ensureSeedBooks } from "../../lib/db";
     import type { BookListing } from "../../lib/db";
 
     let selectedGenre = $state("All");
@@ -24,6 +24,7 @@
     ];
 
     async function loadBooks() {
+        await ensureSeedBooks();
         books = await getAllBooks();
     }
 
