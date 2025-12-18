@@ -3,6 +3,9 @@
     import Card from "../components/Card.svelte";
     import Book from "../components/Book.svelte";
     import { getAllBooks, ensureSeedBooks } from "../lib/db";
+    import { getTopSponsors, type Sponsor } from "../lib/sponsors";
+    import Logo from "../components/Logo.svelte";
+    import ContactUs from "../components/ContactUs.svelte";
     import type { BookListing } from "../lib/db";
 
     let books = $state<BookListing[]>([]);
@@ -25,6 +28,14 @@
     $effect(() => {
         loadBooks();
     });
+
+    // Load top sponsors
+    let topSponsors = $state<Sponsor[]>([]);
+    function loadSponsors() {
+        topSponsors = getTopSponsors();
+    }
+
+    $effect(loadSponsors);
 </script>
 
 <!-- Action Cards -->
@@ -57,7 +68,7 @@
             tagline="Pass the magic of reading forward."
         />
     </div>
-</div>
+  </div>
 
 <!-- Shelf Header -->
 <div class="w-full py-6 bg-amber-400 text-center px-4">
@@ -87,3 +98,47 @@
         {/if}
     </div>
 </div>
+
+<!-- Sponsors (subtle, footer) -->
+<div class="w-full py-10 bg-gray-50">
+  <div class="w-full max-w-7xl mx-auto px-4">
+    <div class="flex items-center justify-between mb-4">
+      <div>
+        <h4 class="text-sm font-medium text-gray-700">Our Sponsors</h4>
+        <p class="text-xs text-gray-500">Supporters of the OpenShelf community</p>
+      </div>
+
+      <div class="flex gap-3">
+        <a href="/sponsors" class="text-xs text-amber-700 hover:underline">View all sponsors</a>
+        <a href="/sponsor" class="text-xs text-amber-700 hover:underline">Sponsor us</a>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {#each topSponsors as s}
+        <div>
+          <a href={s.website ?? '#'} target="_blank" rel="noopener" class="block">
+            <div class="w-full bg-white rounded-none border border-gray-100 p-4 flex items-center gap-4 hover:shadow-sm transition">
+              <div class="w-24 h-16 flex items-center justify-center bg-gray-50 border border-gray-100">
+                <Logo src={s.logo} alt={s.name} class="w-full h-full object-contain" />
+              </div>
+
+              <div class="flex-1">
+                <div class="text-sm font-semibold">{s.name}</div>
+                {#if s.message}
+                  <div class="text-xs text-gray-500">{s.message}</div>
+                {/if}
+              </div>
+            </div>
+          </a>
+        </div>
+      {/each}
+    </div>
+  </div>
+</div>
+
+<!-- Contact -->
+<ContactUs />
+
+
+

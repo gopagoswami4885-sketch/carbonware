@@ -1,5 +1,24 @@
 <script lang="ts">
+    import { onMount } from "svelte";
     let menuOpen = false;
+
+    function handleContactClick(e: MouseEvent) {
+        try {
+            const path = typeof window !== 'undefined' ? window.location.pathname : '/';
+            if (path === '/' || path === '') {
+                e.preventDefault();
+                const el = document.getElementById('contact');
+                if (el) {
+                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    history.replaceState(null, '', '#contact');
+                }
+                menuOpen = false;
+            }
+            // Otherwise, let the anchor navigate to home with the hash and +layout will handle scrolling
+        } catch (err) {
+            // ignore
+        }
+    }
 </script>
 
 <header class="w-full bg-white">
@@ -17,6 +36,7 @@
       <a href="/listing" class="flex items-center gap-2 text-sm font-medium hover:underline" aria-label="List Books"> <span aria-hidden="true">➕</span> <span class="ml-1">List Books</span> </a>
       <a href="/exchange" class="flex items-center gap-2 text-sm font-medium hover:underline" aria-label="Exchange Books"> <span aria-hidden="true">🔄</span> <span class="ml-1">Exchange Books</span> </a>
       <a href="/donate" class="flex items-center gap-2 text-sm font-medium hover:underline" aria-label="Donate Books"> <span aria-hidden="true">🎁</span> <span class="ml-1">Donate Books</span> </a>
+      <a href="/#contact" class="flex items-center gap-2 text-sm font-medium hover:underline" aria-label="Contact Us" on:click={handleContactClick}> <span aria-hidden="true">✉️</span> <span class="ml-1">Contact Us</span> </a>
     </nav>
 
     <button class="md:hidden p-2 text-2xl" on:click={() => (menuOpen = !menuOpen)} aria-expanded={menuOpen} aria-label="Toggle navigation">{menuOpen ? '✖' : '☰'}</button>
@@ -27,7 +47,8 @@
           <a href="/search" class="px-4 py-3 text-sm font-medium border-b" on:click={() => (menuOpen = false)}>🔍 Find Books</a>
           <a href="/listing" class="px-4 py-3 text-sm font-medium border-b" on:click={() => (menuOpen = false)}>➕ List Books</a>
           <a href="/exchange" class="px-4 py-3 text-sm font-medium border-b" on:click={() => (menuOpen = false)}>🔄 Exchange Books</a>
-          <a href="/donate" class="px-4 py-3 text-sm font-medium" on:click={() => (menuOpen = false)}>🎁 Donate Books</a>
+          <a href="/donate" class="px-4 py-3 text-sm font-medium border-b" on:click={() => (menuOpen = false)}>🎁 Donate Books</a>
+          <a href="/#contact" class="px-4 py-3 text-sm font-medium" on:click={(e) => { handleContactClick(e); menuOpen = false; }}>✉️ Contact Us</a>
         </div>
       </div>
     {/if}

@@ -27,7 +27,7 @@ export {};
 
 declare module "$app/types" {
 	export interface AppTypes {
-		RouteId(): "/" | "/buy" | "/buy/[id]" | "/donate" | "/exchange" | "/listing" | "/search";
+		RouteId(): "/" | "/buy" | "/buy/[id]" | "/donate" | "/exchange" | "/listing" | "/search" | "/sponsors" | "/sponsor";
 		RouteParams(): {
 			"/buy/[id]": { id: string }
 		};
@@ -38,9 +38,11 @@ declare module "$app/types" {
 			"/donate": Record<string, never>;
 			"/exchange": Record<string, never>;
 			"/listing": Record<string, never>;
-			"/search": Record<string, never>
+			"/search": Record<string, never>;
+			"/sponsors": Record<string, never>;
+			"/sponsor": Record<string, never>
 		};
-		Pathname(): "/" | "/buy" | "/buy/" | `/buy/${string}` & {} | `/buy/${string}/` & {} | "/donate" | "/donate/" | "/exchange" | "/exchange/" | "/listing" | "/listing/" | "/search" | "/search/";
+		Pathname(): "/" | "/buy" | "/buy/" | `/buy/${string}` & {} | `/buy/${string}/` & {} | "/donate" | "/donate/" | "/exchange" | "/exchange/" | "/listing" | "/listing/" | "/search" | "/search/" | "/sponsors" | "/sponsors/" | "/sponsor" | "/sponsor/";
 		ResolvedPathname(): `${"" | `/${string}`}${ReturnType<AppTypes['Pathname']>}`;
 		Asset(): "/donate_books.jpg" | "/exchange.jpg" | "/listing.jpg" | "/logo.ico" | "/logo.jpg" | "/robots.txt" | "/search_books.jpg" | "/vite.svg" | string & {};
 	}
