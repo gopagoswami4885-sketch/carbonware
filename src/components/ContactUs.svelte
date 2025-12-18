@@ -52,7 +52,7 @@
           <input class="input mt-1" placeholder="Full name" bind:value={name} />
 
           <label class="text-xs font-medium text-gray-600 mt-3">Email</label>
-          <input class="input mt-1" placeholder="you@example.com" bind:value={email} aria-invalid={!isValidEmail(email) && email.trim().length > 0} />
+          <input class="input mt-1" type="email"  placeholder="you@example.com" bind:value={email} aria-invalid={!isValidEmail(email) && email.trim().length > 0} />
 
           <label class="text-xs font-medium text-gray-600 mt-3">Message</label>
           <textarea class="input mt-1" rows={4} placeholder="How can we help?" bind:value={message}></textarea>
