@@ -1,15 +1,73 @@
 <script lang="ts">
     import Navbar from "../../components/Navbar.svelte";
-    import Book from "../../components/Book.svelte";
-    import { addBook, getAllBooks } from "../../lib/db";
-    import type { BookListing } from "../../lib/db";
-    import { Mail, MapPin, CheckCircle } from "@lucide/svelte";
+    import toast from "svelte-french-toast";
+    import { ImagePlus, Mail, X, Plus } from "@lucide/svelte";
 
-    /* ---------- Section 1: Put book for exchange ---------- */
+    /* ===================== UTIL ===================== */
+    function clone<T>(v: T): T {
+        return JSON.parse(JSON.stringify(v));
+    }
+
+    /* ===================== TYPES ===================== */
+    export type ExchangeListing = {
+        id: string;
+        image: string | null;
+        bookName: string;
+        bookTitle: string;
+        genre: string;
+        exchangeAddress: string;
+        exchangeEmail: string;
+        createdAt: string;
+    };
+
+    /* ===================== INDEXED DB ===================== */
+    const DB_NAME = "exchange-db";
+    const STORE_NAME = "exchanges";
+
+    function openDB(): Promise<IDBDatabase> {
+        return new Promise((resolve, reject) => {
+            const req = indexedDB.open(DB_NAME, 1);
+
+            req.onupgradeneeded = () => {
+                const db = req.result;
+                if (!db.objectStoreNames.contains(STORE_NAME)) {
+                    db.createObjectStore(STORE_NAME, { keyPath: "id" });
+                }
+            };
+
+            req.onsuccess = () => resolve(req.result);
+            req.onerror = () => reject(req.error);
+        });
+    }
+
+    async function addExchange(exchange: ExchangeListing) {
+        const db = await openDB();
+        const tx = db.transaction(STORE_NAME, "readwrite");
+        tx.objectStore(STORE_NAME).add(clone(exchange));
+        return tx.complete;
+    }
+
+    async function getAllExchanges(): Promise<ExchangeListing[]> {
+        const db = await openDB();
+        const tx = db.transaction(STORE_NAME, "readonly");
+        const store = tx.objectStore(STORE_NAME);
+
+        return new Promise((resolve) => {
+            const req = store.getAll();
+            req.onsuccess = () => resolve(clone(req.result));
+        });
+    }
+
+    /* ===================== UI STATE ===================== */
+    let activeTab = $state<"create" | "view">("create");
+
+    /* ---------- CREATE ---------- */
     let imagePreview = $state<string | null>(null);
     let bookName = $state("");
     let bookTitle = $state("");
     let genre = $state("");
+    let customGenre = $state("");
+    let useCustomGenre = $state(false);
     let address = $state("");
     let email = $state("");
 
@@ -36,190 +94,258 @@
         reader.readAsDataURL(file);
     }
 
-    async function addExchangeListing() {
-        if (!bookName || !bookTitle || !genre || !email) {
-            alert("Please fill required fields");
+    async function createExchange() {
+        const finalGenre = useCustomGenre ? customGenre : genre;
+
+        if (!bookName || !bookTitle || !finalGenre || !email) {
+            toast.error("Please fill all required fields");
             return;
         }
 
-        const book: BookListing = {
+        const exchange: ExchangeListing = {
             id: crypto.randomUUID(),
             image: imagePreview,
             bookName,
             bookTitle,
-            genre,
-            originalPrice: "",
-            listingPrice: "",
+            genre: finalGenre,
             exchangeAddress: address,
             exchangeEmail: email,
-            isExchange: true,
             createdAt: new Date().toISOString(),
         };
 
-        await addBook(book);
+        await addExchange(exchange);
 
         imagePreview = null;
         bookName = "";
         bookTitle = "";
         genre = "";
+        customGenre = "";
+        useCustomGenre = false;
         address = "";
         email = "";
 
-        alert("Exchange listing added!");
+        toast.success("Exchange listing created 🔄");
     }
 
-    /* ---------- Section 2: Exchange with listing ---------- */
-    let listings = $state<BookListing[]>([]);
-    let selectedBook: BookListing | null = $state(null);
-    let messageSent = $state(false);
+    /* ---------- VIEW ---------- */
+    let listings = $state<ExchangeListing[]>([]);
+    let selectedExchange = $state<ExchangeListing | null>(null);
+    let showModal = $state(false);
 
-    async function loadListings() {
-        listings = (await getAllBooks()).filter((b) => b.isExchange);
+    async function loadExchanges() {
+        listings = await getAllExchanges();
     }
 
-    $effect(() => {
-        loadListings();
-    });
+    $effect(loadExchanges);
+
+    function openModal(exchange: ExchangeListing) {
+        selectedExchange = clone(exchange);
+        showModal = true;
+    }
 
     function initiateExchange() {
-        if (!selectedBook) return;
+        if (!selectedExchange) return;
 
         const subject = encodeURIComponent(
-            `Book Exchange Request: ${selectedBook.bookName}`,
+            `Book Exchange Request: ${selectedExchange.bookName}`,
         );
 
         const body = encodeURIComponent(
-            `Hello,\n\nI would like to exchange books with you.\n\n` +
-                `Book Offered:\n${bookName || "Not specified"}\n\n` +
-                `Exchange Location:\n${address || "To be discussed"}\n\n` +
+            `Hello,\n\n` +
+                `I am interested in exchanging books.\n\n` +
+                `Book: ${selectedExchange.bookName}\n` +
+                `Genre: ${selectedExchange.genre}\n` +
+                `Location: ${selectedExchange.exchangeAddress || "To be discussed"}\n\n` +
                 `Please let me know if you're interested.\n`,
         );
 
-        window.location.href = `mailto:${selectedBook.exchangeEmail}?subject=${subject}&body=${body}`;
-        messageSent = true;
+        window.location.href = `mailto:${selectedExchange.exchangeEmail}?subject=${subject}&body=${body}`;
+
+        showModal = false;
+        toast.success("Email opened in your mail app 📧");
     }
 </script>
+
+<!-- ===================== SNIPPET ===================== -->
+{#snippet ExchangeCard(exchange: ExchangeListing)}
+    <div
+        class="w-[280px] bg-white rounded-2xl shadow hover:shadow-lg transition cursor-pointer overflow-hidden"
+    >
+        {#if exchange.image}
+            <img
+                src={exchange.image}
+                class="w-full aspect-square object-cover"
+            />
+        {/if}
+
+        <div class="p-4 flex flex-col gap-1">
+            <p class="text-lg font-semibold">{exchange.bookName}</p>
+            <p class="text-sm text-gray-500">{exchange.bookTitle}</p>
+            <span
+                class="mt-2 inline-block text-xs px-3 py-1 rounded-full bg-amber-100 text-amber-800 w-fit"
+            >
+                {exchange.genre}
+            </span>
+        </div>
+    </div>
+{/snippet}
 
 <div class="w-full flex justify-center">
     <Navbar />
 </div>
 
-<div class="w-full flex flex-col items-center gap-16 py-10">
-    <!-- SECTION 1: PUT UP FOR EXCHANGE -->
-    <section class="w-full max-w-2xl bg-white rounded-3xl shadow-lg p-8">
-        <h2 class="text-2xl font-semibold mb-6 text-center">
-            Put a Book Up for Exchange 🔄
-        </h2>
+<div class="w-full max-w-[1280px] mx-auto py-10">
+    <!-- Tabs -->
+    <div class="flex justify-center gap-4 mb-10">
+        <button
+            class="tab"
+            class:active={activeTab === "create"}
+            onclick={() => (activeTab = "create")}
+        >
+            Create Exchange
+        </button>
+        <button
+            class="tab"
+            class:active={activeTab === "view"}
+            onclick={() => (activeTab = "view")}
+        >
+            View Exchange Offers
+        </button>
+    </div>
 
-        <!-- Image uploader -->
-        <div class="flex justify-center mb-6">
-            <div
-                class="w-40 aspect-square rounded-2xl border bg-gray-50 cursor-pointer flex items-center justify-center overflow-hidden"
-                onclick={() => fileInput.click()}
-            >
-                {#if imagePreview}
-                    <img
-                        src={imagePreview}
-                        class="w-full h-full object-cover"
-                    />
-                {:else}
-                    <p class="text-gray-400 text-sm text-center">
-                        Click to add cover
-                    </p>
-                {/if}
+    <!-- CREATE -->
+    {#if activeTab === "create"}
+        <section class="max-w-2xl mx-auto bg-white rounded-3xl shadow-lg p-8">
+            <h2 class="text-2xl font-semibold text-center mb-6">
+                Put a Book Up for Exchange 🔄
+            </h2>
+
+            <div class="flex justify-center mb-6">
+                <div
+                    class="w-44 aspect-square rounded-2xl border bg-gray-50 cursor-pointer flex items-center justify-center overflow-hidden"
+                    onclick={() => fileInput.click()}
+                >
+                    {#if imagePreview}
+                        <img
+                            src={imagePreview}
+                            class="w-full h-full object-cover"
+                        />
+                    {:else}
+                        <ImagePlus size={36} class="text-gray-400" />
+                    {/if}
+                </div>
+
+                <input
+                    bind:this={fileInput}
+                    type="file"
+                    accept="image/*"
+                    class="hidden"
+                    onchange={handleImage}
+                />
             </div>
 
-            <input
-                bind:this={fileInput}
-                type="file"
-                accept="image/*"
-                class="hidden"
-                onchange={handleImage}
-            />
-        </div>
+            <div class="flex flex-col gap-4">
+                <input
+                    class="input"
+                    placeholder="Book Name"
+                    bind:value={bookName}
+                />
+                <input
+                    class="input"
+                    placeholder="Book Title / Edition"
+                    bind:value={bookTitle}
+                />
 
-        <div class="flex flex-col gap-4">
-            <input
-                class="input"
-                placeholder="Book Name"
-                bind:value={bookName}
-            />
-            <input
-                class="input"
-                placeholder="Book Title / Edition"
-                bind:value={bookTitle}
-            />
+                {#if !useCustomGenre}
+                    <select class="input" bind:value={genre}>
+                        <option value="" disabled>Select genre</option>
+                        {#each genres as g}<option value={g}>{g}</option>{/each}
+                    </select>
 
-            <select class="input" bind:value={genre}>
-                <option value="" disabled>Select genre</option>
-                {#each genres as g}
-                    <option value={g}>{g}</option>
-                {/each}
-            </select>
-
-            <input
-                class="input"
-                placeholder="Exchange Address"
-                bind:value={address}
-            />
-
-            <input
-                class="input"
-                type="email"
-                placeholder="Contact Email"
-                bind:value={email}
-            />
-
-            <button
-                class="mt-4 py-3 rounded-xl bg-amber-400 hover:bg-amber-500 font-semibold"
-                onclick={addExchangeListing}
-            >
-                Add Exchange Listing
-            </button>
-        </div>
-    </section>
-
-    <!-- SECTION 2: EXCHANGE WITH EXISTING LISTING -->
-    <section class="w-full max-w-[1280px]">
-        <h2 class="text-2xl font-semibold mb-6 text-center">
-            Available Exchange Listings 📚
-        </h2>
-
-        <div class="flex gap-4 flex-wrap justify-center">
-            {#each listings as book (book.id)}
-                <div
-                    class="cursor-pointer"
-                    onclick={() => (selectedBook = book)}
-                >
-                    <Book
-                        image={book.image}
-                        bookName={book.bookName}
-                        originalPrice=""
-                        listingPrice=""
+                    <button
+                        class="text-sm text-amber-700 flex items-center gap-1"
+                        onclick={() => (useCustomGenre = true)}
+                    >
+                        <Plus size={14} /> Add custom genre
+                    </button>
+                {:else}
+                    <input
+                        class="input"
+                        placeholder="Custom genre"
+                        bind:value={customGenre}
                     />
+                {/if}
+
+                <input
+                    class="input"
+                    placeholder="Exchange Address"
+                    bind:value={address}
+                />
+                <input
+                    class="input"
+                    type="email"
+                    placeholder="Contact Email"
+                    bind:value={email}
+                />
+
+                <button
+                    class="mt-4 py-3 rounded-xl bg-amber-400 hover:bg-amber-500 font-semibold"
+                    onclick={createExchange}
+                >
+                    Create Exchange Listing
+                </button>
+            </div>
+        </section>
+    {/if}
+
+    <!-- VIEW -->
+    {#if activeTab === "view"}
+        <section class="flex gap-4 flex-wrap justify-center">
+            {#each listings as exchange (exchange.id)}
+                <div onclick={() => openModal(exchange)}>
+                    {@render ExchangeCard(exchange)}
                 </div>
             {/each}
-        </div>
 
-        {#if selectedBook}
-            <div class="mt-8 flex justify-center">
+            {#if listings.length === 0}
+                <p class="text-center text-gray-500 mt-8">
+                    No exchange offers yet 📚
+                </p>
+            {/if}
+        </section>
+    {/if}
+
+    <!-- MODAL -->
+    {#if showModal && selectedExchange}
+        <div
+            class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+        >
+            <div class="bg-white rounded-2xl p-6 w-full max-w-md relative">
                 <button
-                    class="flex items-center gap-2 py-3 px-6 rounded-xl bg-green-500 text-white font-semibold"
+                    class="absolute top-4 right-4"
+                    onclick={() => (showModal = false)}
+                >
+                    <X />
+                </button>
+
+                <h3 class="text-xl font-semibold mb-4">Initiate Exchange</h3>
+
+                <p><strong>Book:</strong> {selectedExchange.bookName}</p>
+                <p><strong>Genre:</strong> {selectedExchange.genre}</p>
+                <p>
+                    <strong>Location:</strong>
+                    {selectedExchange.exchangeAddress}
+                </p>
+
+                <button
+                    class="mt-6 w-full py-3 rounded-xl bg-green-500 text-white font-semibold flex items-center justify-center gap-2"
                     onclick={initiateExchange}
                 >
                     <Mail size={18} />
-                    Initiate Exchange
+                    Send Exchange Email
                 </button>
             </div>
-        {/if}
-    </section>
-
-    <!-- SECTION 3: NOTICE -->
-    {#if messageSent}
-        <section class="flex items-center gap-3 text-green-600 text-lg">
-            <CheckCircle />
-            Exchange request has been notified via email.
-        </section>
+        </div>
     {/if}
 </div>
 
@@ -228,11 +354,22 @@
         padding: 0.75rem 1rem;
         border-radius: 0.75rem;
         border: 1px solid #e5e7eb;
-        outline: none;
     }
 
     .input:focus {
+        outline: none;
         border-color: #f59e0b;
         box-shadow: 0 0 0 2px #fde68a;
+    }
+
+    .tab {
+        padding: 0.75rem 1.5rem;
+        border-radius: 999px;
+        background: #f3f4f6;
+        font-weight: 600;
+    }
+
+    .tab.active {
+        background: #fbbf24;
     }
 </style>
